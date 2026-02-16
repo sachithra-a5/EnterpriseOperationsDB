@@ -7,7 +7,7 @@
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectVersion>4.1</ProjectVersion>
     <ProjectGuid>{6a070770-cff9-4789-ba6d-dc775b08fcd4}</ProjectGuid>
-    <DSP>Microsoft.Data.Tools.Schema.Sql.Sql170DatabaseSchemaProvider</DSP>
+    <DSP>Microsoft.Data.Tools.Schema.Sql.Sql160DatabaseSchemaProvider</DSP>
     <OutputType>Database</OutputType>
     <RootPath>
     </RootPath>
@@ -54,12 +54,14 @@
   </PropertyGroup>
   <Import Condition="'$(SQLDBExtensionsRefPath)' != ''" Project="$(SQLDBExtensionsRefPath)\Microsoft.Data.Tools.Schema.SqlTasks.targets" />
   <Import Condition="'$(SQLDBExtensionsRefPath)' == ''" Project="$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v$(VisualStudioVersion)\SSDT\Microsoft.Data.Tools.Schema.SqlTasks.targets" />
-  <!-- SQLCMD variables used in post-deploy scripts; defaults allow build to succeed. Publish profile overrides at deploy time. -->
+  <!-- SQLCMD variables: DefaultValue populates the Publish dialog when you click "Load Values"; Value is used at build/deploy. -->
   <ItemGroup>
     <SqlCmdVariable Include="Environment">
+      <DefaultValue>Dev</DefaultValue>
       <Value>Dev</Value>
     </SqlCmdVariable>
     <SqlCmdVariable Include="DatabaseName">
+      <DefaultValue>EnterpriseOperationsDB_Dev</DefaultValue>
       <Value>EnterpriseOperationsDB_Dev</Value>
     </SqlCmdVariable>
   </ItemGroup>
