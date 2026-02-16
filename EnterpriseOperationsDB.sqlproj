@@ -1,0 +1,103 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="4.0">
+  <PropertyGroup>
+    <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
+    <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
+    <Name>EnterpriseOperationsDB</Name>
+    <SchemaVersion>2.0</SchemaVersion>
+    <ProjectVersion>4.1</ProjectVersion>
+    <ProjectGuid>{6a070770-cff9-4789-ba6d-dc775b08fcd4}</ProjectGuid>
+    <DSP>Microsoft.Data.Tools.Schema.Sql.Sql170DatabaseSchemaProvider</DSP>
+    <OutputType>Database</OutputType>
+    <RootPath>
+    </RootPath>
+    <RootNamespace>EnterpriseOperationsDB</RootNamespace>
+    <AssemblyName>EnterpriseOperationsDB</AssemblyName>
+    <ModelCollation>1033, CI</ModelCollation>
+    <DefaultFileStructure>BySchemaAndSchemaType</DefaultFileStructure>
+    <DeployToDatabase>True</DeployToDatabase>
+    <TargetFrameworkVersion>v4.7.2</TargetFrameworkVersion>
+    <TargetLanguage>CS</TargetLanguage>
+    <AppDesignerFolder>Properties</AppDesignerFolder>
+    <SqlServerVerification>False</SqlServerVerification>
+    <IncludeCompositeObjects>True</IncludeCompositeObjects>
+    <TargetDatabaseSet>True</TargetDatabaseSet>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <OutputPath>bin\Release\</OutputPath>
+    <BuildScriptName>$(MSBuildProjectName).sql</BuildScriptName>
+    <TreatWarningsAsErrors>False</TreatWarningsAsErrors>
+    <DebugType>pdbonly</DebugType>
+    <Optimize>true</Optimize>
+    <DefineDebug>false</DefineDebug>
+    <DefineTrace>true</DefineTrace>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <OutputPath>bin\Debug\</OutputPath>
+    <BuildScriptName>$(MSBuildProjectName).sql</BuildScriptName>
+    <TreatWarningsAsErrors>false</TreatWarningsAsErrors>
+    <DebugSymbols>true</DebugSymbols>
+    <DebugType>full</DebugType>
+    <Optimize>false</Optimize>
+    <DefineDebug>true</DefineDebug>
+    <DefineTrace>true</DefineTrace>
+    <ErrorReport>prompt</ErrorReport>
+    <WarningLevel>4</WarningLevel>
+  </PropertyGroup>
+  <PropertyGroup>
+    <VisualStudioVersion Condition="'$(VisualStudioVersion)' == ''">11.0</VisualStudioVersion>
+    <!-- Default to the v11.0 targets path if the targets file for the current VS version is not found -->
+    <SSDTExists Condition="Exists('$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v$(VisualStudioVersion)\SSDT\Microsoft.Data.Tools.Schema.SqlTasks.targets')">True</SSDTExists>
+    <VisualStudioVersion Condition="'$(SSDTExists)' == ''">11.0</VisualStudioVersion>
+  </PropertyGroup>
+  <Import Condition="'$(SQLDBExtensionsRefPath)' != ''" Project="$(SQLDBExtensionsRefPath)\Microsoft.Data.Tools.Schema.SqlTasks.targets" />
+  <Import Condition="'$(SQLDBExtensionsRefPath)' == ''" Project="$(MSBuildExtensionsPath)\Microsoft\VisualStudio\v$(VisualStudioVersion)\SSDT\Microsoft.Data.Tools.Schema.SqlTasks.targets" />
+  <!-- SQLCMD variables used in post-deploy scripts; defaults allow build to succeed. Publish profile overrides at deploy time. -->
+  <ItemGroup>
+    <SqlCmdVariable Include="Environment">
+      <Value>Dev</Value>
+    </SqlCmdVariable>
+    <SqlCmdVariable Include="DatabaseName">
+      <Value>EnterpriseOperationsDB_Dev</Value>
+    </SqlCmdVariable>
+  </ItemGroup>
+  <ItemGroup>
+    <Folder Include="Properties" />
+    <Folder Include="Schemas" />
+    <Folder Include="Tables" />
+    <Folder Include="Functions" />
+    <Folder Include="StoredProcedures" />
+    <Folder Include="StaticData" />
+    <Folder Include="Jobs" />
+    <Folder Include="PostDeployment" />
+    <Folder Include="PublishProfiles" />
+  </ItemGroup>
+  <ItemGroup>
+    <Build Include="Schemas\hr.Schema.sql" />
+    <Build Include="Schemas\config.Schema.sql" />
+    <Build Include="Tables\hr.Department.sql" />
+    <Build Include="Tables\hr.Role.sql" />
+    <Build Include="Tables\config.Status.sql" />
+    <Build Include="Tables\dbo.Employee.sql" />
+    <Build Include="Functions\dbo.GetEmployeeDisplayName.sql" />
+    <Build Include="StoredProcedures\hr.InsertDepartment.sql" />
+    <Build Include="StoredProcedures\hr.UpdateDepartment.sql" />
+    <Build Include="StoredProcedures\hr.SelectDepartments.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <PostDeploy Include="PostDeployment\Script.PostDeployment.sql">
+      <BuildAction>PostDeploy</BuildAction>
+    </PostDeploy>
+    <None Include="StaticData\DepartmentData.sql" />
+    <None Include="StaticData\RoleData.sql" />
+    <None Include="StaticData\StatusData.sql" />
+    <None Include="Jobs\Job_Maintenance_EnterpriseOperations.sql" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Include="PublishProfiles\Dev.publish.xml" />
+    <None Include="PublishProfiles\UAT.publish.xml" />
+    <None Include="PublishProfiles\Prod.publish.xml" />
+  </ItemGroup>
+</Project>
