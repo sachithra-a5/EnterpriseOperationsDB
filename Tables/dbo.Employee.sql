@@ -5,7 +5,8 @@
 CREATE TABLE [dbo].[Employee] (
     [EmployeeId]   INT              IDENTITY (1, 1) NOT NULL,
     [EmployeeCode] NVARCHAR(20)     NOT NULL,
-    [FullName]     NVARCHAR(200)    NOT NULL,
+    [FullName]     NVARCHAR(500)    NOT NULL,
+    [EmailAddress] NVARCHAR(150)    NULL,
     [DepartmentId] INT              NOT NULL,
     [StatusId]     INT              NOT NULL,
     [CreatedDate]  DATETIME2(7)     NOT NULL CONSTRAINT [DF_dbo_Employee_CreatedDate] DEFAULT (GETDATE()),
