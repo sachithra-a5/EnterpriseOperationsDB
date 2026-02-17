@@ -84,6 +84,7 @@
     <Build Include="Tables\hr.Role.sql" />
     <Build Include="Tables\config.Status.sql" />
     <Build Include="Tables\dbo.Employee.sql" />
+    <Build Include="Tables\dbo.Project.sql" />
     <Build Include="Functions\dbo.GetEmployeeDisplayName.sql" />
     <Build Include="StoredProcedures\hr.InsertDepartment.sql" />
     <Build Include="StoredProcedures\hr.UpdateDepartment.sql" />
