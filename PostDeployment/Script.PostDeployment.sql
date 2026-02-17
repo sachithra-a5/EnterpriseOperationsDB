@@ -6,4 +6,5 @@
 :r ..\StaticData\DepartmentData.sql
 :r ..\StaticData\RoleData.sql
 :r ..\StaticData\StatusData.sql
+:r ..\StaticData\PaymentMethodData.sql
 :r ..\Jobs\Job_Maintenance_EnterpriseOperations.sql

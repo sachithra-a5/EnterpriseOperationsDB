@@ -83,6 +83,7 @@
     <Build Include="Tables\hr.Department.sql" />
     <Build Include="Tables\hr.Role.sql" />
     <Build Include="Tables\config.Status.sql" />
+    <Build Include="Tables\config.PaymentMethod.sql" />
     <Build Include="Tables\dbo.Employee.sql" />
     <Build Include="Tables\dbo.Project.sql" />
     <Build Include="Functions\dbo.GetEmployeeDisplayName.sql" />
@@ -98,6 +99,7 @@
     <None Include="StaticData\DepartmentData.sql" />
     <None Include="StaticData\RoleData.sql" />
     <None Include="StaticData\StatusData.sql" />
+    <None Include="StaticData\PaymentMethodData.sql" />
     <None Include="Jobs\Job_Maintenance_EnterpriseOperations.sql" />
   </ItemGroup>
   <ItemGroup>
