@@ -72,6 +72,7 @@
     <Folder Include="Functions" />
     <Folder Include="StoredProcedures" />
     <Folder Include="Views" />
+    <Folder Include="Triggers" />
     <Folder Include="StaticData" />
     <Folder Include="Jobs" />
     <Folder Include="PostDeployment" />
@@ -85,12 +86,14 @@
     <Build Include="Tables\config.Status.sql" />
     <Build Include="Tables\config.PaymentMethod.sql" />
     <Build Include="Tables\dbo.Employee.sql" />
+    <Build Include="Tables\dbo.EmployeeAudit.sql" />
     <Build Include="Tables\dbo.Project.sql" />
     <Build Include="Functions\dbo.GetEmployeeDisplayName.sql" />
     <Build Include="StoredProcedures\hr.InsertDepartment.sql" />
     <Build Include="StoredProcedures\hr.UpdateDepartment.sql" />
     <Build Include="StoredProcedures\hr.SelectDepartments.sql" />
     <Build Include="Views\dbo.vw_EmployeeDetail.sql" />
+    <Build Include="Triggers\dbo.trg_Employee_Insert.sql" />
   </ItemGroup>
   <ItemGroup>
     <PostDeploy Include="PostDeployment\Script.PostDeployment.sql">
