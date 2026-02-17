@@ -71,6 +71,7 @@
     <Folder Include="Tables" />
     <Folder Include="Functions" />
     <Folder Include="StoredProcedures" />
+    <Folder Include="Views" />
     <Folder Include="StaticData" />
     <Folder Include="Jobs" />
     <Folder Include="PostDeployment" />
@@ -87,6 +88,7 @@
     <Build Include="StoredProcedures\hr.InsertDepartment.sql" />
     <Build Include="StoredProcedures\hr.UpdateDepartment.sql" />
     <Build Include="StoredProcedures\hr.SelectDepartments.sql" />
+    <Build Include="Views\dbo.vw_EmployeeDetail.sql" />
   </ItemGroup>
   <ItemGroup>
     <PostDeploy Include="PostDeployment\Script.PostDeployment.sql">

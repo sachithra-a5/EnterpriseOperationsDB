@@ -10,6 +10,7 @@ EnterpriseOperationsDB/
 ├── Tables/               # Table definitions (dbo, hr, config)
 ├── Functions/            # User-defined functions
 ├── StoredProcedures/     # Stored procedures (Insert, Update, Select examples)
+├── Views/                # SQL views (e.g. reporting views)
 ├── StaticData/           # Seed/reference data (one file per entity)
 ├── Jobs/                  # SQL Server Agent job scripts
 ├── PostDeployment/        # Single post-deploy script; :r includes StaticData and Jobs
@@ -17,6 +18,7 @@ EnterpriseOperationsDB/
 ```
 
 - **Schemas:** `hr` (HR objects), `config` (reference/configuration). `dbo` is the default.
+- **Views:** One `.sql` file per view (e.g. `dbo.vw_EmployeeDetail` for employee list with department/status names).
 - **StaticData:** One file per entity (e.g. `DepartmentData.sql`, `RoleData.sql`, `StatusData.sql`). No subfolders. Each file has common data (all environments) and environment-specific blocks using the `$(Environment)` SQLCMD variable.
 - **PostDeployment:** Runs after schema deploy. Uses `:r` to run static data and job scripts in a fixed order (Department → Role → Status → Jobs).
 
@@ -81,6 +83,7 @@ The script **Jobs\Job_Maintenance_EnterpriseOperations.sql** is run from the pos
 ## Database objects (overview)
 
 - **Tables:** `hr.Department`, `hr.Role`, `config.Status`, `dbo.Employee` (with FKs across schemas and audit columns: CreatedDate, ModifiedDate, IsActive).
+- **Views:** `dbo.vw_EmployeeDetail` — employee list with department and status names (joins `dbo.Employee`, `hr.Department`, `config.Status`).
 - **Function:** `dbo.GetEmployeeDisplayName(EmployeeId)` — returns the employee’s full name.
 - **Stored procedures:** `hr.InsertDepartment`, `hr.UpdateDepartment`, `hr.SelectDepartments`.
 
@@ -90,6 +93,7 @@ The script **Jobs\Job_Maintenance_EnterpriseOperations.sql** is run from the pos
 - **Static data:** One file per entity under **StaticData**, no subfolders. Control execution order in **PostDeployment\Script.PostDeployment.sql**.
 - **Environment variable:** Use the publish profile’s `Environment` so one set of scripts works for Dev, UAT, and Prod.
 - **Idempotent scripts:** Always use `IF NOT EXISTS` (or equivalent) for static data inserts.
+- **Re-publishing:** Deploying again when objects (tables, views, etc.) already exist is safe. SSDT compares the project to the target and only updates what changed (e.g. views are dropped and recreated if their definition changed). View-level permissions are lost on view updates; use schema-level grants or a post-deploy script if you need to preserve them.
 - **Source control:** Commit `.sqlproj`, all `.sql` files, and publish profiles. Use placeholder or safe connection strings; avoid storing production passwords in the repo.
 
 ## License
