@@ -1,18 +1,22 @@
 /*
     Function: dbo.GetEmployeeDisplayName
-    Purpose: Returns the FullName for the given EmployeeId, or NULL if not found.
+    Purpose: Return a display name for the given EmployeeId: "FullName (EmployeeCode)", or NULL if not found or @EmployeeId is NULL.
+    Only active employees (IsActive = 1). Trims spaces from FullName.
 */
 CREATE FUNCTION [dbo].[GetEmployeeDisplayName] (@EmployeeId INT)
-RETURNS NVARCHAR(200)
+RETURNS NVARCHAR(550)
 AS
 BEGIN
-    DECLARE @FullName NVARCHAR(200);
+    DECLARE @DisplayName NVARCHAR(550) = NULL;
 
-    SELECT @FullName = [FullName]
-    FROM [dbo].[Employee]
-    WHERE [EmployeeId] = @EmployeeId
-      AND [IsActive] = 1;
+    IF @EmployeeId IS NOT NULL
+    BEGIN
+        SELECT @DisplayName = LTRIM(RTRIM([FullName])) + N' (' + [EmployeeCode] + N')'
+        FROM [dbo].[Employee]
+        WHERE [EmployeeId] = @EmployeeId
+          AND [IsActive] = 1;
+    END;
 
-    RETURN @FullName;
+    RETURN @DisplayName;
 END;
 GO
