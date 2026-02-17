@@ -92,6 +92,7 @@
     <Build Include="StoredProcedures\hr.InsertDepartment.sql" />
     <Build Include="StoredProcedures\hr.UpdateDepartment.sql" />
     <Build Include="StoredProcedures\hr.SelectDepartments.sql" />
+    <Build Include="StoredProcedures\dbo.usp_GetEmployeesByDepartment.sql" />
     <Build Include="Views\dbo.vw_EmployeeDetail.sql" />
     <Build Include="Views\dbo.vw_EmployeeSummary.sql" />
     <Build Include="Triggers\dbo.trg_Employee_Insert.sql" />
