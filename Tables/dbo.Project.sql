@@ -17,8 +17,10 @@ CREATE TABLE [dbo].[Project] (
 );
 
 GO
+-- Lookups by ProjectName; INCLUDE (ProjectCode) for covering queries.
 CREATE NONCLUSTERED INDEX [IX_dbo_Project_ProjectName]
-    ON [dbo].[Project] ([ProjectName] ASC);
+    ON [dbo].[Project] ([ProjectName] ASC)
+    INCLUDE ([ProjectCode]);
 
 GO
 CREATE NONCLUSTERED INDEX [IX_dbo_Project_IsActive]

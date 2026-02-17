@@ -19,8 +19,16 @@ CREATE TABLE [dbo].[Employee] (
 );
 
 GO
+-- Unique emails for non-NULL values only; multiple NULLs allowed (filtered index).
+CREATE UNIQUE NONCLUSTERED INDEX [UQ_dbo_Employee_EmailAddress]
+    ON [dbo].[Employee] ([EmailAddress] ASC)
+    WHERE [EmailAddress] IS NOT NULL;
+
+GO
+-- Covering index: seek by DepartmentId and return FullName without key lookups.
 CREATE NONCLUSTERED INDEX [IX_dbo_Employee_DepartmentId]
-    ON [dbo].[Employee] ([DepartmentId] ASC);
+    ON [dbo].[Employee] ([DepartmentId] ASC)
+    INCLUDE ([FullName]);
 
 GO
 CREATE NONCLUSTERED INDEX [IX_dbo_Employee_StatusId]
