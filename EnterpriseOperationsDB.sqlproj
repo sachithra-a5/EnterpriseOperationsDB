@@ -89,6 +89,7 @@
     <Build Include="Tables\dbo.EmployeeAudit.sql" />
     <Build Include="Tables\dbo.Project.sql" />
     <Build Include="Functions\dbo.GetEmployeeDisplayName.sql" />
+    <Build Include="Functions\dbo.ufn_GetEmployeeFullName.sql" />
     <Build Include="StoredProcedures\hr.InsertDepartment.sql" />
     <Build Include="StoredProcedures\hr.UpdateDepartment.sql" />
     <Build Include="StoredProcedures\hr.SelectDepartments.sql" />
