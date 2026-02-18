@@ -4,7 +4,7 @@
 */
 CREATE TABLE [dbo].[Employee] (
     [EmployeeId]   INT              IDENTITY (1, 1) NOT NULL,
-    [EmployeeCode] NVARCHAR(20)     NOT NULL,
+    [EmployeeCode] NVARCHAR(30)     NOT NULL,
     [FullName]     NVARCHAR(500)    NOT NULL,
     [EmailAddress] NVARCHAR(150)    NULL,
     [DepartmentId] INT              NOT NULL,
