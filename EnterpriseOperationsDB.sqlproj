@@ -88,12 +88,14 @@
     <Build Include="Tables\dbo.Employee.sql" />
     <Build Include="Tables\dbo.EmployeeAudit.sql" />
     <Build Include="Tables\dbo.Project.sql" />
+    <Build Include="Tables\dbo.EmployeeStatistics.sql" />
     <Build Include="Functions\dbo.GetEmployeeDisplayName.sql" />
     <Build Include="Functions\dbo.ufn_GetEmployeeFullName.sql" />
     <Build Include="StoredProcedures\hr.InsertDepartment.sql" />
     <Build Include="StoredProcedures\hr.UpdateDepartment.sql" />
     <Build Include="StoredProcedures\hr.SelectDepartments.sql" />
     <Build Include="StoredProcedures\dbo.usp_GetEmployeesByDepartment.sql" />
+    <Build Include="StoredProcedures\dbo.usp_CollectEmployeeStatistics.sql" />
     <Build Include="Views\dbo.vw_EmployeeDetail.sql" />
     <Build Include="Views\dbo.vw_EmployeeSummary.sql" />
     <Build Include="Triggers\dbo.trg_Employee_Insert.sql" />
@@ -107,6 +109,7 @@
     <None Include="StaticData\StatusData.sql" />
     <None Include="StaticData\PaymentMethodData.sql" />
     <None Include="Jobs\Job_Maintenance_EnterpriseOperations.sql" />
+    <None Include="Jobs\Job_EmployeeStatistics.sql" />
   </ItemGroup>
   <ItemGroup>
     <None Include="PublishProfiles\Dev.publish.xml" />
