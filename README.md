@@ -12,9 +12,11 @@ EnterpriseOperationsDB/
 ├── StoredProcedures/     # Stored procedures (Insert, Update, Select examples)
 ├── Views/                # SQL views (e.g. reporting views)
 ├── StaticData/           # Seed/reference data (one file per entity)
-├── Jobs/                  # SQL Server Agent job scripts
-├── PostDeployment/        # Single post-deploy script; :r includes StaticData and Jobs
-└── PublishProfiles/       # Dev, UAT, Prod publish settings
+├── Jobs/                 # SQL Server Agent job scripts
+├── Scripts/              # Non-database scripts (e.g. PowerShell for Agent jobs)
+│   └── PowerShell/       # ExportEmployeeData.ps1 and README_ExportEmployeeData.md
+├── PostDeployment/       # Single post-deploy script; :r includes StaticData and Jobs
+└── PublishProfiles/      # Dev, UAT, Prod publish settings
 ```
 
 - **Schemas:** `hr` (HR objects), `config` (reference/configuration). `dbo` is the default.
@@ -76,9 +78,17 @@ Override connection or variables as needed; the profile supplies `Environment` a
 - **Environment-specific data:** Wrapped in `IF '$(Environment)' = 'Dev'` (or `UAT` / `Prod`). Only the block for the current profile’s `Environment` runs.
 - **Idempotency:** All inserts are guarded by `IF NOT EXISTS` on a natural key (e.g. `DepartmentCode`, `RoleCode`, `StatusCode`) so re-publishing does not create duplicate rows.
 
-## SQL Server Agent job
+## SQL Server Agent jobs
 
-The script **Jobs\Job_Maintenance_EnterpriseOperations.sql** is run from the post-deployment script. It creates or updates the job **Maintenance_EnterpriseOperations** (one T-SQL step, daily at 2:00 AM). The step runs in the database specified by the `$(DatabaseName)` SQLCMD variable (set by each publish profile).
+Post-deployment runs the job scripts under **Jobs/** in order. Each script is idempotent (creates or updates the job).
+
+| Job | Schedule | Description |
+|-----|----------|-------------|
+| **Maintenance_EnterpriseOperations** | Daily 2:00 AM | T-SQL maintenance step in `$(DatabaseName)`. |
+| **EmployeeStatistics_Daily** | Daily 1:15 PM | Runs `dbo.usp_CollectEmployeeStatistics` to populate `dbo.EmployeeStatistics`. |
+| **Job_ExportEmployeeData** | Daily 1:00 PM | Runs **PowerShell** script `D:\SQLJobs\Powershell\ExportEmployeeData.ps1`; writes static data to `D:\SQLJobs\Output\` and logs to `D:\SQLJobs\Logs\`. |
+
+- **Job_ExportEmployeeData:** The PowerShell script is stored in the repo at **Scripts\PowerShell\ExportEmployeeData.ps1**. Deploy a copy to **D:\SQLJobs\Powershell\ExportEmployeeData.ps1** on each server where the job runs. See **Scripts\PowerShell\README_ExportEmployeeData.md** for deployment and testing steps.
 
 ## Database objects (overview)
 

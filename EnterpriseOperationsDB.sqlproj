@@ -77,6 +77,8 @@
     <Folder Include="Jobs" />
     <Folder Include="PostDeployment" />
     <Folder Include="PublishProfiles" />
+    <Folder Include="Scripts" />
+    <Folder Include="Scripts\PowerShell" />
   </ItemGroup>
   <ItemGroup>
     <Build Include="Schemas\hr.Schema.sql" />
@@ -110,6 +112,9 @@
     <None Include="StaticData\PaymentMethodData.sql" />
     <None Include="Jobs\Job_Maintenance_EnterpriseOperations.sql" />
     <None Include="Jobs\Job_EmployeeStatistics.sql" />
+    <None Include="Jobs\Job_ExportEmployeeData.sql" />
+    <None Include="Scripts\PowerShell\ExportEmployeeData.ps1" />
+    <None Include="Scripts\PowerShell\README_ExportEmployeeData.md" />
   </ItemGroup>
   <ItemGroup>
     <None Include="PublishProfiles\Dev.publish.xml" />

@@ -16,3 +16,5 @@ GO
 GO
 :r ..\Jobs\Job_EmployeeStatistics.sql
 GO
+:r ..\Jobs\Job_ExportEmployeeData.sql
+GO
