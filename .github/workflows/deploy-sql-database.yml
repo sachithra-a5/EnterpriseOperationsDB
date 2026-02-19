@@ -1,5 +1,6 @@
 # CI/CD for Visual Studio Database Project (.sqlproj) → SQL Server 2022
 # Optimized for Self-Hosted Runners on Windows
+# Deploy to Dev environment
 
 name: Deploy SQL Database
 
