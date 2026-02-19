@@ -11,9 +11,10 @@ on:
 jobs:
   deploy:
     runs-on: [self-hosted, windows]
+    environment: Dev
     defaults:
       run:
-        shell: pwsh
+        shell: powershell # Changed from pwsh to powershell for local compatibility
     env:
       DB_SERVER_NAME: ${{ vars.DB_SERVER_NAME }}
       DB_NAME: ${{ vars.DB_NAME }}
@@ -27,10 +28,18 @@ jobs:
 
       - name: Setup SqlPackage
         run: |
-          # Install tool if missing, or ignore error if already present
-          dotnet tool install -g microsoft.sqlpackage --ignore-failed-sources || dotnet tool update -g microsoft.sqlpackage
-          # Persist the path for the entire job
-          echo "$env:USERPROFILE\.dotnet\tools" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+          # Use powershell syntax to check and install
+          dotnet tool install -g microsoft.sqlpackage --ignore-failed-sources 2>$null
+          if ($LASTEXITCODE -ne 0) { dotnet tool update -g microsoft.sqlpackage }
+          
+          # Add to path for this session
+          $dotnetPath = "$env:USERPROFILE\.dotnet\tools"
+          echo "$dotnetPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Verify Variables
+        run: |
+          if (-not $env:DB_SERVER_NAME) { throw "Variable DB_SERVER_NAME is empty. Check GitHub Settings." }
+          Write-Host "Targeting Server: $env:DB_SERVER_NAME"
 
       - name: Auto-discover .sqlproj
         id: discover
@@ -59,10 +68,10 @@ jobs:
           sqlpackage /Action:Publish `
             /SourceFile:"${{ steps.discover.outputs.dacpac_path }}" `
             /TargetConnectionString:"${{ secrets.DB_CONNECTION_STRING }}" `
-            /p:BlockOnPossibleDataLoss=true  # Change to false if you want to allow column drops
+            /p:BlockOnPossibleDataLoss=true
 
       - name: Upload Report
-        if: always() # Upload even if publish fails
+        if: always()
         uses: actions/upload-artifact@v4
         with:
           name: deployment-report
