@@ -10,7 +10,7 @@ on:
 
 jobs:
   deploy:
-    runs-on: [self-hosted, windows]
+    runs-runs-on: [self-hosted, windows]
     environment: Dev
     defaults:
       run:
@@ -28,10 +28,8 @@ jobs:
 
       - name: Setup SqlPackage
         run: |
-          # Install tool if missing, or update if existing
           dotnet tool install -g microsoft.sqlpackage --ignore-failed-sources 2>$null
           if ($LASTEXITCODE -ne 0) { dotnet tool update -g microsoft.sqlpackage }
-          # Persist path for subsequent steps
           echo "$env:USERPROFILE\.dotnet\tools" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Auto-discover .sqlproj
@@ -48,15 +46,14 @@ jobs:
       - name: Locate Built Dacpac
         id: locate
         run: |
-          # Finds the dacpac in the bin folder after build
-          $dacpac = Get-ChildItem -Path $env:GITHUB_WORKSPACE -Recurse -Filter "*.dacpac" | Where-Object { $_.FullName -contains "bin" } | Select-Object -First 1
+          # Use -like "*bin*" to correctly find the file path in PowerShell
+          $dacpac = Get-ChildItem -Path $env:GITHUB_WORKSPACE -Recurse -Filter "*.dacpac" | Where-Object { $_.FullName -like "*bin*" } | Select-Object -First 1
           if (-not $dacpac) { throw "Build succeeded but .dacpac was not found in any bin folder." }
           Write-Host "Found Dacpac at: $($dacpac.FullName)"
           echo "dacpac_path=$($dacpac.FullName)" >> $env:GITHUB_OUTPUT
 
       - name: Generate Deployment Report
         run: |
-          # Triple quotes prevent spaces in connection strings from breaking the command
           sqlpackage /Action:DeployReport `
             /SourceFile:"${{ steps.locate.outputs.dacpac_path }}" `
             /TargetConnectionString:"""${{ secrets.DB_CONNECTION_STRING }}""" `
@@ -75,3 +72,10 @@ jobs:
         with:
           name: deployment-report
           path: ${{ steps.discover.outputs.report_path }}
+
+      - name: Cleanup Workspace
+        if: always()
+        run: |
+          Write-Host "Cleaning up build artifacts..."
+          Get-ChildItem -Path $env:GITHUB_WORKSPACE -Recurse -Include bin,obj | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
+          if (Test-Path "${{ steps.discover.outputs.report_path }}") { Remove-Item "${{ steps.discover.outputs.report_path }}" -Force }
