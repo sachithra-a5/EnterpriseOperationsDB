@@ -1,5 +1,5 @@
 # CI/CD for Visual Studio Database Project (.sqlproj) → SQL Server 2022
-# Runner: GitHub Self-hosted (Windows). No hardcoded paths for MSBuild or SqlPackage.
+# Optimized for Self-Hosted Runners on Windows
 
 name: Deploy SQL Database
 
@@ -14,7 +14,7 @@ jobs:
     environment: Dev
     defaults:
       run:
-        shell: powershell # Changed from pwsh to powershell for local compatibility
+        shell: powershell
     env:
       DB_SERVER_NAME: ${{ vars.DB_SERVER_NAME }}
       DB_NAME: ${{ vars.DB_NAME }}
@@ -28,49 +28,48 @@ jobs:
 
       - name: Setup SqlPackage
         run: |
-          # Use powershell syntax to check and install
+          # Install tool if missing, or update if existing
           dotnet tool install -g microsoft.sqlpackage --ignore-failed-sources 2>$null
           if ($LASTEXITCODE -ne 0) { dotnet tool update -g microsoft.sqlpackage }
-          
-          # Add to path for this session
-          $dotnetPath = "$env:USERPROFILE\.dotnet\tools"
-          echo "$dotnetPath" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-
-      - name: Verify Variables
-        run: |
-          if (-not $env:DB_SERVER_NAME) { throw "Variable DB_SERVER_NAME is empty. Check GitHub Settings." }
-          Write-Host "Targeting Server: $env:DB_SERVER_NAME"
+          # Persist path for subsequent steps
+          echo "$env:USERPROFILE\.dotnet\tools" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Auto-discover .sqlproj
         id: discover
         run: |
           $sqlproj = Get-ChildItem -Path $env:GITHUB_WORKSPACE -Recurse -Filter "*.sqlproj" | Select-Object -First 1
           if (-not $sqlproj) { throw "No .sqlproj file found." }
-          
-          $dacpacPath = Join-Path (Split-Path -Parent $sqlproj.FullName) "bin\Release\$([System.IO.Path]::GetFileNameWithoutExtension($sqlproj.Name)).dacpac"
-          
           echo "sqlproj_path=$($sqlproj.FullName)" >> $env:GITHUB_OUTPUT
-          echo "dacpac_path=$dacpacPath" >> $env:GITHUB_OUTPUT
           echo "report_path=$env:GITHUB_WORKSPACE\deployment_report.xml" >> $env:GITHUB_OUTPUT
 
-      - name: Build
+      - name: Build Database Project
         run: msbuild "${{ steps.discover.outputs.sqlproj_path }}" /p:Configuration=Release /p:Platform="Any CPU"
 
-      - name: Deploy Report
+      - name: Locate Built Dacpac
+        id: locate
         run: |
+          # Finds the dacpac in the bin folder after build
+          $dacpac = Get-ChildItem -Path $env:GITHUB_WORKSPACE -Recurse -Filter "*.dacpac" | Where-Object { $_.FullName -contains "bin" } | Select-Object -First 1
+          if (-not $dacpac) { throw "Build succeeded but .dacpac was not found in any bin folder." }
+          Write-Host "Found Dacpac at: $($dacpac.FullName)"
+          echo "dacpac_path=$($dacpac.FullName)" >> $env:GITHUB_OUTPUT
+
+      - name: Generate Deployment Report
+        run: |
+          # Triple quotes prevent spaces in connection strings from breaking the command
           sqlpackage /Action:DeployReport `
-            /SourceFile:"${{ steps.discover.outputs.dacpac_path }}" `
-            /TargetConnectionString:"${{ secrets.DB_CONNECTION_STRING }}" `
+            /SourceFile:"${{ steps.locate.outputs.dacpac_path }}" `
+            /TargetConnectionString:"""${{ secrets.DB_CONNECTION_STRING }}""" `
             /OutputPath:"${{ steps.discover.outputs.report_path }}"
 
-      - name: Publish
+      - name: Publish to SQL Server
         run: |
           sqlpackage /Action:Publish `
-            /SourceFile:"${{ steps.discover.outputs.dacpac_path }}" `
-            /TargetConnectionString:"${{ secrets.DB_CONNECTION_STRING }}" `
+            /SourceFile:"${{ steps.locate.outputs.dacpac_path }}" `
+            /TargetConnectionString:"""${{ secrets.DB_CONNECTION_STRING }}""" `
             /p:BlockOnPossibleDataLoss=true
 
-      - name: Upload Report
+      - name: Upload Deployment Artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
