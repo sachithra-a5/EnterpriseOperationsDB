@@ -1,0 +1,69 @@
+# CI/CD for Visual Studio Database Project (.sqlproj) → SQL Server 2022
+# Runner: GitHub Self-hosted (Windows). No hardcoded paths for MSBuild or SqlPackage.
+
+name: Deploy SQL Database
+
+on:
+  push:
+    branches: [master]
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: [self-hosted, windows]
+    defaults:
+      run:
+        shell: pwsh
+    env:
+      DB_SERVER_NAME: ${{ vars.DB_SERVER_NAME }}
+      DB_NAME: ${{ vars.DB_NAME }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Setup SqlPackage
+        run: |
+          # Install tool if missing, or ignore error if already present
+          dotnet tool install -g microsoft.sqlpackage --ignore-failed-sources || dotnet tool update -g microsoft.sqlpackage
+          # Persist the path for the entire job
+          echo "$env:USERPROFILE\.dotnet\tools" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+
+      - name: Auto-discover .sqlproj
+        id: discover
+        run: |
+          $sqlproj = Get-ChildItem -Path $env:GITHUB_WORKSPACE -Recurse -Filter "*.sqlproj" | Select-Object -First 1
+          if (-not $sqlproj) { throw "No .sqlproj file found." }
+          
+          $dacpacPath = Join-Path (Split-Path -Parent $sqlproj.FullName) "bin\Release\$([System.IO.Path]::GetFileNameWithoutExtension($sqlproj.Name)).dacpac"
+          
+          echo "sqlproj_path=$($sqlproj.FullName)" >> $env:GITHUB_OUTPUT
+          echo "dacpac_path=$dacpacPath" >> $env:GITHUB_OUTPUT
+          echo "report_path=$env:GITHUB_WORKSPACE\deployment_report.xml" >> $env:GITHUB_OUTPUT
+
+      - name: Build
+        run: msbuild "${{ steps.discover.outputs.sqlproj_path }}" /p:Configuration=Release /p:Platform="Any CPU"
+
+      - name: Deploy Report
+        run: |
+          sqlpackage /Action:DeployReport `
+            /SourceFile:"${{ steps.discover.outputs.dacpac_path }}" `
+            /TargetConnectionString:"${{ secrets.DB_CONNECTION_STRING }}" `
+            /OutputPath:"${{ steps.discover.outputs.report_path }}"
+
+      - name: Publish
+        run: |
+          sqlpackage /Action:Publish `
+            /SourceFile:"${{ steps.discover.outputs.dacpac_path }}" `
+            /TargetConnectionString:"${{ secrets.DB_CONNECTION_STRING }}" `
+            /p:BlockOnPossibleDataLoss=true  # Change to false if you want to allow column drops
+
+      - name: Upload Report
+        if: always() # Upload even if publish fails
+        uses: actions/upload-artifact@v4
+        with:
+          name: deployment-report
+          path: ${{ steps.discover.outputs.report_path }}
