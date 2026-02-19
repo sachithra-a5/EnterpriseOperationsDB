@@ -10,7 +10,7 @@ on:
 
 jobs:
   deploy:
-    runs-runs-on: [self-hosted, windows]
+    runs-on: [self-hosted, windows]
     environment: Dev
     defaults:
       run:
