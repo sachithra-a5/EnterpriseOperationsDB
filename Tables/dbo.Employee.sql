@@ -13,6 +13,7 @@ CREATE TABLE [dbo].[Employee] (
     [ModifiedDate] DATETIME2(7)     NOT NULL CONSTRAINT [DF_dbo_Employee_ModifiedDate] DEFAULT (GETDATE()),
     [IsActive]     BIT              NOT NULL CONSTRAINT [DF_dbo_Employee_IsActive] DEFAULT (1),
     [PhoneNumber]  NVARCHAR(20) NULL, 
+    [ZipCode]      NVARCHAR(10) NULL, 
     CONSTRAINT [PK_dbo_Employee] PRIMARY KEY CLUSTERED ([EmployeeId] ASC),
     CONSTRAINT [FK_dbo_Employee_hr_Department] FOREIGN KEY ([DepartmentId]) REFERENCES [hr].[Department] ([DepartmentId]),
     CONSTRAINT [FK_dbo_Employee_config_Status] FOREIGN KEY ([StatusId]) REFERENCES [config].[Status] ([StatusId]),
