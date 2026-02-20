@@ -13,9 +13,14 @@ jobs:
   build_preview:
     name: Build & Generate Script
     runs-on: [self-hosted, windows]
+    environment: ${{ vars.ENV_NAME }}
     defaults:
       run:
         shell: powershell
+    env:
+      DB_SERVER_NAME: ${{ vars.DB_SERVER_NAME }}
+      DB_NAME: ${{ vars.DB_NAME }}
+      ENV_VALUE: ${{ vars.ENV_NAME }}
     outputs:
       sqlproj_path: ${{ steps.discover.outputs.sqlproj_path }}
       report_path: ${{ steps.discover.outputs.report_path }}
@@ -48,23 +53,23 @@ jobs:
         run: |
           $dacpac = Get-ChildItem -Path $env:GITHUB_WORKSPACE -Recurse -Filter "*.dacpac" | Where-Object { $_.FullName -like "*bin*" } | Select-Object -First 1
           if (-not $dacpac) { throw "Build succeeded but .dacpac was not found." }
-          $fullConnString = "Server=${{ vars.DB_SERVER_NAME }};Database=${{ vars.DB_NAME }};${{ secrets.DB_CONNECTION_STRING }}"
+          $fullConnString = "Server=${{ env.DB_SERVER_NAME }};Database=${{ env.DB_NAME }};${{ secrets.DB_CONNECTION_STRING }}"
 
           sqlpackage /Action:Script `
             /SourceFile:"$($dacpac.FullName)" `
-            /TargetServerName:"${{ vars.DB_SERVER_NAME }}" `
-            /TargetDatabaseName:"${{ vars.DB_NAME }}" `
+            /TargetServerName:"${{ env.DB_SERVER_NAME }}" `
+            /TargetDatabaseName:"${{ env.DB_NAME }}" `
             /TargetConnectionString:"""$fullConnString""" `
             /OutputPath:"$env:GITHUB_WORKSPACE\deployment_preview.sql" `
-            /v:Environment="${{ vars.ENV_NAME }}"
+            /v:Environment="${{ env.ENV_VALUE }}"
 
           sqlpackage /Action:DeployReport `
             /SourceFile:"$($dacpac.FullName)" `
-            /TargetServerName:"${{ vars.DB_SERVER_NAME }}" `
-            /TargetDatabaseName:"${{ vars.DB_NAME }}" `
+            /TargetServerName:"${{ env.DB_SERVER_NAME }}" `
+            /TargetDatabaseName:"${{ env.DB_NAME }}" `
             /TargetConnectionString:"""$fullConnString""" `
             /OutputPath:"${{ steps.discover.outputs.report_path }}" `
-            /v:Environment="${{ vars.ENV_NAME }}"
+            /v:Environment="${{ env.ENV_VALUE }}"
 
       - name: Upload Deployment Package
         uses: actions/upload-artifact@v4
