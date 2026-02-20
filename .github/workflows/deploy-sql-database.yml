@@ -76,17 +76,21 @@ jobs:
       - name: Add Report to Job Summary
         if: always()
         run: |
-          $summaryFile = $env:GITHUB_STEP_SUMMARY
+          # Use UTF-8 so symbols (emojis) display correctly in the job summary
+          chcp 65001 | Out-Null
+          $OutputEncoding = [System.Text.Encoding]::UTF8
+          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
           
-          # This helper function ensures UTF-8 WITHOUT BOM
+          $summaryFile = $env:GITHUB_STEP_SUMMARY
+          $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+          
           function Add-SummaryLine {
               param([string]$text)
-              $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
               [System.IO.File]::AppendAllLines($summaryFile, [string[]]$text, $utf8NoBom)
           }
 
           if (Test-Path "${{ steps.discover.outputs.report_path }}") {
-            [xml]$xml = Get-Content "${{ steps.discover.outputs.report_path }}"
+            [xml]$xml = Get-Content "${{ steps.discover.outputs.report_path }}" -Encoding UTF8
             $ops = $xml.DeploymentReport.Operations.Operation
             
             Add-SummaryLine "### 🚀 Deployment Summary: ${{ env.ENV_VALUE }}"
