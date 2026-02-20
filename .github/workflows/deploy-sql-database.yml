@@ -1,5 +1,6 @@
 # CI/CD for Visual Studio Database Project (.sqlproj) → SQL Server 2022
 # Optimized for Self-Hosted Runners on Windows
+# Deploy to Dev environment using Global and Environment Variables
 
 name: Deploy SQL Database
 
@@ -30,6 +31,7 @@ jobs:
 
       - name: Setup SqlPackage
         run: |
+          # Idempotent install: checks if exists, otherwise installs/updates
           dotnet tool install -g microsoft.sqlpackage --ignore-failed-sources 2>$null
           if ($LASTEXITCODE -ne 0) { dotnet tool update -g microsoft.sqlpackage }
           echo "$env:USERPROFILE\.dotnet\tools" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
@@ -49,14 +51,13 @@ jobs:
         id: locate
         run: |
           $dacpac = Get-ChildItem -Path $env:GITHUB_WORKSPACE -Recurse -Filter "*.dacpac" | Where-Object { $_.FullName -like "*bin*" } | Select-Object -First 1
-          if (-not $dacpac) { throw "Build succeeded but .dacpac was not found." }
+          if (-not $dacpac) { throw "Build succeeded but .dacpac was not found in any bin folder." }
+          Write-Host "Found Dacpac at: $($dacpac.FullName)"
           echo "dacpac_path=$($dacpac.FullName)" >> $env:GITHUB_OUTPUT
 
       - name: Generate Deployment Report
         run: |
-          # Dynamically build connection string
           $fullConnString = "Server=${{ env.DB_SERVER_NAME }};Database=${{ env.DB_NAME }};${{ secrets.DB_CONNECTION_STRING }}"
-          
           sqlpackage /Action:DeployReport `
             /SourceFile:"${{ steps.locate.outputs.dacpac_path }}" `
             /TargetConnectionString:"""$fullConnString""" `
@@ -65,24 +66,45 @@ jobs:
 
       - name: Publish to SQL Server
         run: |
-          # Dynamically build connection string
           $fullConnString = "Server=${{ env.DB_SERVER_NAME }};Database=${{ env.DB_NAME }};${{ secrets.DB_CONNECTION_STRING }}"
-          
           sqlpackage /Action:Publish `
             /SourceFile:"${{ steps.locate.outputs.dacpac_path }}" `
             /TargetConnectionString:"""$fullConnString""" `
             /p:BlockOnPossibleDataLoss=true `
             /v:Environment="${{ env.ENV_VALUE }}"
 
+      - name: Add Report to Job Summary
+        if: always()
+        run: |
+          if (Test-Path "${{ steps.discover.outputs.report_path }}") {
+            [xml]$xml = Get-Content "${{ steps.discover.outputs.report_path }}"
+            $ops = $xml.DeploymentReport.Operations.Operation
+            
+            echo "### 🚀 Deployment Summary: ${{ env.ENV_VALUE }}" >> $env:GITHUB_STEP_SUMMARY
+            if ($ops) {
+              echo "| Operation | Object Type | Target Name |" >> $env:GITHUB_STEP_SUMMARY
+              echo "| :--- | :--- | :--- |" >> $env:GITHUB_STEP_SUMMARY
+              foreach ($op in $ops) {
+                echo "| $($op.Name) | $($op.Item.Type) | $($op.Item.Name) |" >> $env:GITHUB_STEP_SUMMARY
+              }
+            } else {
+              echo "✅ No schema changes detected. Database is already up to date." >> $env:GITHUB_STEP_SUMMARY
+            }
+          } else {
+            echo "### ⚠️ Deployment Report not found." >> $env:GITHUB_STEP_SUMMARY
+          }
+
       - name: Deploy PowerShell scripts to target folder
         run: |
           $destPath = "${{ vars.SCRIPTS_DESTINATION_PATH }}"
-          if ([string]::IsNullOrWhiteSpace($destPath)) { throw "SCRIPTS_DESTINATION_PATH not set." }
+          if ([string]::IsNullOrWhiteSpace($destPath)) {
+            throw "SCRIPTS_DESTINATION_PATH is not set in GitHub Variables."
+          }
           $sourcePath = Join-Path $env:GITHUB_WORKSPACE "Scripts\PowerShell"
           if (Test-Path $sourcePath) {
             New-Item -ItemType Directory -Path $destPath -Force | Out-Null
             Copy-Item -Path (Join-Path $sourcePath "*.ps1") -Destination $destPath -Force
-            Write-Host "Scripts deployed to $destPath"
+            Write-Host "Successfully copied scripts to $destPath"
           }
 
       - name: Upload Deployment Artifacts
@@ -95,7 +117,6 @@ jobs:
       - name: Cleanup Workspace
         if: always()
         run: |
-          Write-Host "Cleaning up workspace..."
+          Write-Host "Cleaning up build artifacts on self-hosted runner..."
           Get-ChildItem -Path $env:GITHUB_WORKSPACE -Recurse -Include bin,obj | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
           if (Test-Path "${{ steps.discover.outputs.report_path }}") { Remove-Item "${{ steps.discover.outputs.report_path }}" -Force }
-          Write-Host "Cleanup complete."
