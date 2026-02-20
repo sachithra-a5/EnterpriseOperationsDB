@@ -1,6 +1,5 @@
 # CI/CD for Visual Studio Database Project (.sqlproj) → SQL Server 2022
 # Optimized for Self-Hosted Runners on Windows
-# Deploy to Dev environment
 
 name: Deploy SQL Database
 
@@ -11,14 +10,16 @@ on:
 
 jobs:
   deploy:
+    name: SQL Deployment to ${{ vars.ENV_NAME }}
     runs-on: [self-hosted, windows]
-    environment: Dev
+    environment: ${{ vars.ENV_NAME }}
     defaults:
       run:
         shell: powershell
     env:
       DB_SERVER_NAME: ${{ vars.DB_SERVER_NAME }}
       DB_NAME: ${{ vars.DB_NAME }}
+      ENV_VALUE: ${{ vars.ENV_NAME }}
 
     steps:
       - name: Checkout
@@ -47,56 +48,54 @@ jobs:
       - name: Locate Built Dacpac
         id: locate
         run: |
-          # Use -like "*bin*" to correctly find the file path in PowerShell
           $dacpac = Get-ChildItem -Path $env:GITHUB_WORKSPACE -Recurse -Filter "*.dacpac" | Where-Object { $_.FullName -like "*bin*" } | Select-Object -First 1
-          if (-not $dacpac) { throw "Build succeeded but .dacpac was not found in any bin folder." }
-          Write-Host "Found Dacpac at: $($dacpac.FullName)"
+          if (-not $dacpac) { throw "Build succeeded but .dacpac was not found." }
           echo "dacpac_path=$($dacpac.FullName)" >> $env:GITHUB_OUTPUT
 
       - name: Generate Deployment Report
         run: |
+          # Dynamically build connection string
+          $fullConnString = "Server=${{ env.DB_SERVER_NAME }};Database=${{ env.DB_NAME }};${{ secrets.DB_CONNECTION_STRING }}"
+          
           sqlpackage /Action:DeployReport `
             /SourceFile:"${{ steps.locate.outputs.dacpac_path }}" `
-            /TargetConnectionString:"""${{ secrets.DB_CONNECTION_STRING }}""" `
-            /OutputPath:"${{ steps.discover.outputs.report_path }}"
+            /TargetConnectionString:"""$fullConnString""" `
+            /OutputPath:"${{ steps.discover.outputs.report_path }}" `
+            /v:Environment="${{ env.ENV_VALUE }}"
 
       - name: Publish to SQL Server
         run: |
+          # Dynamically build connection string
+          $fullConnString = "Server=${{ env.DB_SERVER_NAME }};Database=${{ env.DB_NAME }};${{ secrets.DB_CONNECTION_STRING }}"
+          
           sqlpackage /Action:Publish `
             /SourceFile:"${{ steps.locate.outputs.dacpac_path }}" `
-            /TargetConnectionString:"""${{ secrets.DB_CONNECTION_STRING }}""" `
-            /p:BlockOnPossibleDataLoss=true
+            /TargetConnectionString:"""$fullConnString""" `
+            /p:BlockOnPossibleDataLoss=true `
+            /v:Environment="${{ env.ENV_VALUE }}"
 
       - name: Deploy PowerShell scripts to target folder
         run: |
           $destPath = "${{ vars.SCRIPTS_DESTINATION_PATH }}"
-          if ([string]::IsNullOrWhiteSpace($destPath)) {
-            throw "SCRIPTS_DESTINATION_PATH is not set. Configure it in Settings -> Secrets and variables -> Actions (Variables)."
-          }
+          if ([string]::IsNullOrWhiteSpace($destPath)) { throw "SCRIPTS_DESTINATION_PATH not set." }
           $sourcePath = Join-Path $env:GITHUB_WORKSPACE "Scripts\PowerShell"
-          if (-not (Test-Path $sourcePath)) {
-            Write-Host "Source folder does not exist: $sourcePath (no .ps1 files to deploy)."
-            exit 0
+          if (Test-Path $sourcePath) {
+            New-Item -ItemType Directory -Path $destPath -Force | Out-Null
+            Copy-Item -Path (Join-Path $sourcePath "*.ps1") -Destination $destPath -Force
+            Write-Host "Scripts deployed to $destPath"
           }
-          New-Item -ItemType Directory -Path $destPath -Force | Out-Null
-          $files = Get-ChildItem -Path $sourcePath -Filter "*.ps1" -File
-          if ($files.Count -eq 0) {
-            Write-Host "No .ps1 files found in $sourcePath"
-            exit 0
-          }
-          Copy-Item -Path (Join-Path $sourcePath "*.ps1") -Destination $destPath -Force
-          Write-Host "Copied $($files.Count) .ps1 file(s) to $destPath : $($files.Name -join ', ')"
 
       - name: Upload Deployment Artifacts
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: deployment-report
+          name: deployment-report-${{ env.ENV_VALUE }}
           path: ${{ steps.discover.outputs.report_path }}
 
       - name: Cleanup Workspace
         if: always()
         run: |
-          Write-Host "Cleaning up build artifacts..."
+          Write-Host "Cleaning up workspace..."
           Get-ChildItem -Path $env:GITHUB_WORKSPACE -Recurse -Include bin,obj | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
           if (Test-Path "${{ steps.discover.outputs.report_path }}") { Remove-Item "${{ steps.discover.outputs.report_path }}" -Force }
+          Write-Host "Cleanup complete."
