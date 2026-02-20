@@ -73,41 +73,6 @@ jobs:
             /p:BlockOnPossibleDataLoss=true `
             /v:Environment="${{ env.ENV_VALUE }}"
 
-      - name: Add Report to Job Summary
-        if: always()
-        run: |
-          # Use UTF-8 so symbols (emojis) display correctly in the job summary
-          chcp 65001 | Out-Null
-          $OutputEncoding = [System.Text.Encoding]::UTF8
-          [Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-          
-          $summaryFile = $env:GITHUB_STEP_SUMMARY
-          $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
-          
-          function Add-SummaryLine {
-              param([string]$text)
-              [System.IO.File]::AppendAllLines($summaryFile, [string[]]$text, $utf8NoBom)
-          }
-
-          if (Test-Path "${{ steps.discover.outputs.report_path }}") {
-            [xml]$xml = Get-Content "${{ steps.discover.outputs.report_path }}" -Encoding UTF8
-            $ops = $xml.DeploymentReport.Operations.Operation
-            
-            Add-SummaryLine "### 🚀 Deployment Summary: ${{ env.ENV_VALUE }}"
-            
-            if ($ops) {
-              Add-SummaryLine "| Operation | Object Type | Target Name |"
-              Add-SummaryLine "| :--- | :--- | :--- |"
-              foreach ($op in $ops) {
-                Add-SummaryLine "| $($op.Name) | $($op.Item.Type) | $($op.Item.Name) |"
-              }
-            } else {
-              Add-SummaryLine "✅ No schema changes detected. Database is already up to date."
-            }
-          } else {
-            Add-SummaryLine "### ⚠️ Deployment Report not found."
-          }
-
       - name: Deploy PowerShell scripts to target folder
         run: |
           $destPath = "${{ vars.SCRIPTS_DESTINATION_PATH }}"
