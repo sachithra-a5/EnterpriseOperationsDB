@@ -78,29 +78,30 @@ jobs:
         run: |
           $summaryFile = $env:GITHUB_STEP_SUMMARY
           
-          # Function to append text safely in UTF8 without BOM
-          function Append-Summary {
+          # This helper function ensures UTF-8 WITHOUT BOM
+          function Add-SummaryLine {
               param([string]$text)
-              [System.IO.File]::AppendAllLines($summaryFile, [string[]]$text)
+              $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
+              [System.IO.File]::AppendAllLines($summaryFile, [string[]]$text, $utf8NoBom)
           }
 
           if (Test-Path "${{ steps.discover.outputs.report_path }}") {
             [xml]$xml = Get-Content "${{ steps.discover.outputs.report_path }}"
             $ops = $xml.DeploymentReport.Operations.Operation
             
-            Append-Summary "### 🚀 Deployment Summary: ${{ env.ENV_VALUE }}"
+            Add-SummaryLine "### 🚀 Deployment Summary: ${{ env.ENV_VALUE }}"
             
             if ($ops) {
-              Append-Summary "| Operation | Object Type | Target Name |"
-              Append-Summary "| :--- | :--- | :--- |"
+              Add-SummaryLine "| Operation | Object Type | Target Name |"
+              Add-SummaryLine "| :--- | :--- | :--- |"
               foreach ($op in $ops) {
-                Append-Summary "| $($op.Name) | $($op.Item.Type) | $($op.Item.Name) |"
+                Add-SummaryLine "| $($op.Name) | $($op.Item.Type) | $($op.Item.Name) |"
               }
             } else {
-              Append-Summary "✅ No schema changes detected. Database is already up to date."
+              Add-SummaryLine "✅ No schema changes detected. Database is already up to date."
             }
           } else {
-            Append-Summary "### ⚠️ Deployment Report not found."
+            Add-SummaryLine "### ⚠️ Deployment Report not found."
           }
 
       - name: Deploy PowerShell scripts to target folder
