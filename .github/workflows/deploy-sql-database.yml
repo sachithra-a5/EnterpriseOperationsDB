@@ -76,22 +76,26 @@ jobs:
       - name: Add Report to Job Summary
         if: always()
         run: |
+          $summaryFile = $env:GITHUB_STEP_SUMMARY
+          
           if (Test-Path "${{ steps.discover.outputs.report_path }}") {
             [xml]$xml = Get-Content "${{ steps.discover.outputs.report_path }}"
             $ops = $xml.DeploymentReport.Operations.Operation
             
-            echo "### 🚀 Deployment Summary: ${{ env.ENV_VALUE }}" >> $env:GITHUB_STEP_SUMMARY
+            # Use Out-File with UTF8 to prevent garbled text
+            "### 🚀 Deployment Summary: ${{ env.ENV_VALUE }}" | Out-File -FilePath $summaryFile -Encoding utf8 -Append
+            
             if ($ops) {
-              echo "| Operation | Object Type | Target Name |" >> $env:GITHUB_STEP_SUMMARY
-              echo "| :--- | :--- | :--- |" >> $env:GITHUB_STEP_SUMMARY
+              "| Operation | Object Type | Target Name |" | Out-File -FilePath $summaryFile -Encoding utf8 -Append
+              "| :--- | :--- | :--- |" | Out-File -FilePath $summaryFile -Encoding utf8 -Append
               foreach ($op in $ops) {
-                echo "| $($op.Name) | $($op.Item.Type) | $($op.Item.Name) |" >> $env:GITHUB_STEP_SUMMARY
+                "| $($op.Name) | $($op.Item.Type) | $($op.Item.Name) |" | Out-File -FilePath $summaryFile -Encoding utf8 -Append
               }
             } else {
-              echo "✅ No schema changes detected. Database is already up to date." >> $env:GITHUB_STEP_SUMMARY
+              "✅ No schema changes detected. Database is already up to date." | Out-File -FilePath $summaryFile -Encoding utf8 -Append
             }
           } else {
-            echo "### ⚠️ Deployment Report not found." >> $env:GITHUB_STEP_SUMMARY
+            "### ⚠️ Deployment Report not found." | Out-File -FilePath $summaryFile -Encoding utf8 -Append
           }
 
       - name: Deploy PowerShell scripts to target folder
