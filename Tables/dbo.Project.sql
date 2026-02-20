@@ -4,7 +4,7 @@
 */
 CREATE TABLE [dbo].[Project] (
     [ProjectId]    INT              IDENTITY (1, 1) NOT NULL,
-    [ProjectCode]  NVARCHAR(50)      NOT NULL,
+    [ProjectCode]  NVARCHAR(10)      NOT NULL,
     [ProjectName]  NVARCHAR(200)     NOT NULL,
     [Description]  NVARCHAR(500)     NULL,
     [StartDate]    DATE              NOT NULL,
