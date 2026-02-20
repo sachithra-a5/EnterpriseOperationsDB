@@ -1,6 +1,5 @@
 # CI/CD for Visual Studio Database Project (.sqlproj) → SQL Server 2022
-# Optimized for Self-Hosted Runners on Windows
-# Deploy to Dev environment using Global and Environment Variables
+# Job 1: Build & generate SQL script + report. Job 2: Deploy (after manual approval).
 
 name: Deploy SQL Database
 
@@ -10,17 +9,16 @@ on:
   workflow_dispatch:
 
 jobs:
-  deploy:
-    name: SQL Deployment to ${{ vars.ENV_NAME }}
+  # JOB 1: Build the project and generate the SQL Preview Script
+  build_preview:
+    name: Build & Generate Script
     runs-on: [self-hosted, windows]
-    environment: ${{ vars.ENV_NAME }}
     defaults:
       run:
         shell: powershell
-    env:
-      DB_SERVER_NAME: ${{ vars.DB_SERVER_NAME }}
-      DB_NAME: ${{ vars.DB_NAME }}
-      ENV_VALUE: ${{ vars.ENV_NAME }}
+    outputs:
+      sqlproj_path: ${{ steps.discover.outputs.sqlproj_path }}
+      report_path: ${{ steps.discover.outputs.report_path }}
 
     steps:
       - name: Checkout
@@ -31,7 +29,6 @@ jobs:
 
       - name: Setup SqlPackage
         run: |
-          # Idempotent install: checks if exists, otherwise installs/updates
           dotnet tool install -g microsoft.sqlpackage --ignore-failed-sources 2>$null
           if ($LASTEXITCODE -ne 0) { dotnet tool update -g microsoft.sqlpackage }
           echo "$env:USERPROFILE\.dotnet\tools" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
@@ -47,28 +44,68 @@ jobs:
       - name: Build Database Project
         run: msbuild "${{ steps.discover.outputs.sqlproj_path }}" /p:Configuration=Release /p:Platform="Any CPU"
 
-      - name: Locate Built Dacpac
-        id: locate
+      - name: Generate Script & Report
         run: |
           $dacpac = Get-ChildItem -Path $env:GITHUB_WORKSPACE -Recurse -Filter "*.dacpac" | Where-Object { $_.FullName -like "*bin*" } | Select-Object -First 1
-          if (-not $dacpac) { throw "Build succeeded but .dacpac was not found in any bin folder." }
-          Write-Host "Found Dacpac at: $($dacpac.FullName)"
-          echo "dacpac_path=$($dacpac.FullName)" >> $env:GITHUB_OUTPUT
+          if (-not $dacpac) { throw "Build succeeded but .dacpac was not found." }
+          $fullConnString = "Server=${{ vars.DB_SERVER_NAME }};Database=${{ vars.DB_NAME }};${{ secrets.DB_CONNECTION_STRING }}"
 
-      - name: Generate Deployment Report
-        run: |
-          $fullConnString = "Server=${{ env.DB_SERVER_NAME }};Database=${{ env.DB_NAME }};${{ secrets.DB_CONNECTION_STRING }}"
+          sqlpackage /Action:Script `
+            /SourceFile:"$($dacpac.FullName)" `
+            /TargetConnectionString:"""$fullConnString""" `
+            /OutputPath:"$env:GITHUB_WORKSPACE\deployment_preview.sql" `
+            /v:Environment="${{ vars.ENV_NAME }}"
+
           sqlpackage /Action:DeployReport `
-            /SourceFile:"${{ steps.locate.outputs.dacpac_path }}" `
+            /SourceFile:"$($dacpac.FullName)" `
             /TargetConnectionString:"""$fullConnString""" `
             /OutputPath:"${{ steps.discover.outputs.report_path }}" `
-            /v:Environment="${{ env.ENV_VALUE }}"
+            /v:Environment="${{ vars.ENV_NAME }}"
+
+      - name: Upload Deployment Package
+        uses: actions/upload-artifact@v4
+        with:
+          name: sql-deployment-package
+          path: |
+            deployment_preview.sql
+            deployment_report.xml
+            **/*.dacpac
+            Scripts/PowerShell/
+
+  # JOB 2: Execute Deployment (requires manual approval via Environment)
+  deploy:
+    name: SQL Deployment to ${{ vars.ENV_NAME }}
+    needs: build_preview
+    runs-on: [self-hosted, windows]
+    environment: ${{ vars.ENV_NAME }}
+    defaults:
+      run:
+        shell: powershell
+    env:
+      DB_SERVER_NAME: ${{ vars.DB_SERVER_NAME }}
+      DB_NAME: ${{ vars.DB_NAME }}
+      ENV_VALUE: ${{ vars.ENV_NAME }}
+
+    steps:
+      - name: Download Package
+        uses: actions/download-artifact@v4
+        with:
+          name: sql-deployment-package
+
+      - name: Setup SqlPackage
+        run: |
+          dotnet tool install -g microsoft.sqlpackage --ignore-failed-sources 2>$null
+          if ($LASTEXITCODE -ne 0) { dotnet tool update -g microsoft.sqlpackage }
+          echo "$env:USERPROFILE\.dotnet\tools" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
 
       - name: Publish to SQL Server
         run: |
+          $dacpac = Get-ChildItem -Path $env:GITHUB_WORKSPACE -Recurse -Filter "*.dacpac" | Select-Object -First 1
+          if (-not $dacpac) { throw "No .dacpac found in deployment package." }
           $fullConnString = "Server=${{ env.DB_SERVER_NAME }};Database=${{ env.DB_NAME }};${{ secrets.DB_CONNECTION_STRING }}"
+
           sqlpackage /Action:Publish `
-            /SourceFile:"${{ steps.locate.outputs.dacpac_path }}" `
+            /SourceFile:"$($dacpac.FullName)" `
             /TargetConnectionString:"""$fullConnString""" `
             /p:BlockOnPossibleDataLoss=true `
             /v:Environment="${{ env.ENV_VALUE }}"
@@ -80,8 +117,8 @@ jobs:
           $utf8NoBom = New-Object System.Text.UTF8Encoding($false)
           function Add-SummaryLine { param([string]$text); [System.IO.File]::AppendAllLines($summaryFile, [string[]]$text, $utf8NoBom) }
 
-          if (Test-Path "${{ steps.discover.outputs.report_path }}") {
-            [xml]$xml = Get-Content "${{ steps.discover.outputs.report_path }}" -Encoding UTF8
+          if (Test-Path "deployment_report.xml") {
+            [xml]$xml = Get-Content "deployment_report.xml" -Encoding UTF8
             $ns = New-Object System.Xml.XmlNamespaceManager($xml.NameTable)
             $ns.AddNamespace("d", "http://schemas.microsoft.com/sqlserver/dac/DeployReport/2012/02")
             $ops = $xml.SelectNodes("//d:Operation", $ns)
@@ -91,11 +128,8 @@ jobs:
               Add-SummaryLine "| :--- | :--- | :--- |"
               foreach ($op in $ops) {
                 $opName = $op.GetAttribute("Name")
-                $items = $op.SelectNodes("d:Item", $ns)
-                foreach ($item in $items) {
-                  $type = $item.GetAttribute("Type")
-                  $value = $item.GetAttribute("Value")
-                  Add-SummaryLine "| $opName | $type | $value |"
+                foreach ($item in $op.SelectNodes("d:Item", $ns)) {
+                  Add-SummaryLine "| $opName | $($item.GetAttribute('Type')) | $($item.GetAttribute('Value')) |"
                 }
               }
             } else {
@@ -111,23 +145,15 @@ jobs:
           if ([string]::IsNullOrWhiteSpace($destPath)) {
             throw "SCRIPTS_DESTINATION_PATH is not set in GitHub Variables."
           }
-          $sourcePath = Join-Path $env:GITHUB_WORKSPACE "Scripts\PowerShell"
-          if (Test-Path $sourcePath) {
+          if (Test-Path "Scripts/PowerShell") {
             New-Item -ItemType Directory -Path $destPath -Force | Out-Null
-            Copy-Item -Path (Join-Path $sourcePath "*.ps1") -Destination $destPath -Force
+            Copy-Item -Path "Scripts/PowerShell/*.ps1" -Destination $destPath -Force
             Write-Host "Successfully copied scripts to $destPath"
           }
-
-      - name: Upload Deployment Artifacts
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: deployment-report-${{ env.ENV_VALUE }}
-          path: ${{ steps.discover.outputs.report_path }}
 
       - name: Cleanup Workspace
         if: always()
         run: |
-          Write-Host "Cleaning up build artifacts on self-hosted runner..."
+          Write-Host "Cleaning up runner..."
+          Remove-Item -Path "deployment_preview.sql", "deployment_report.xml" -Force -ErrorAction SilentlyContinue
           Get-ChildItem -Path $env:GITHUB_WORKSPACE -Recurse -Include bin,obj | Remove-Item -Recurse -Force -ErrorAction SilentlyContinue
-          if (Test-Path "${{ steps.discover.outputs.report_path }}") { Remove-Item "${{ steps.discover.outputs.report_path }}" -Force }
