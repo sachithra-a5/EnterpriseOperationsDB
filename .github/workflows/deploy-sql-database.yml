@@ -52,12 +52,16 @@ jobs:
 
           sqlpackage /Action:Script `
             /SourceFile:"$($dacpac.FullName)" `
+            /TargetServerName:"${{ vars.DB_SERVER_NAME }}" `
+            /TargetDatabaseName:"${{ vars.DB_NAME }}" `
             /TargetConnectionString:"""$fullConnString""" `
             /OutputPath:"$env:GITHUB_WORKSPACE\deployment_preview.sql" `
             /v:Environment="${{ vars.ENV_NAME }}"
 
           sqlpackage /Action:DeployReport `
             /SourceFile:"$($dacpac.FullName)" `
+            /TargetServerName:"${{ vars.DB_SERVER_NAME }}" `
+            /TargetDatabaseName:"${{ vars.DB_NAME }}" `
             /TargetConnectionString:"""$fullConnString""" `
             /OutputPath:"${{ steps.discover.outputs.report_path }}" `
             /v:Environment="${{ vars.ENV_NAME }}"
