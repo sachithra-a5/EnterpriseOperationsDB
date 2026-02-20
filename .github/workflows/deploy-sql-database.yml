@@ -67,6 +67,26 @@ jobs:
             /TargetConnectionString:"""${{ secrets.DB_CONNECTION_STRING }}""" `
             /p:BlockOnPossibleDataLoss=true
 
+      - name: Deploy PowerShell scripts to target folder
+        run: |
+          $destPath = "${{ vars.SCRIPTS_DESTINATION_PATH }}"
+          if ([string]::IsNullOrWhiteSpace($destPath)) {
+            throw "SCRIPTS_DESTINATION_PATH is not set. Configure it in Settings -> Secrets and variables -> Actions (Variables)."
+          }
+          $sourcePath = Join-Path $env:GITHUB_WORKSPACE "Scripts\PowerShell"
+          if (-not (Test-Path $sourcePath)) {
+            Write-Host "Source folder does not exist: $sourcePath (no .ps1 files to deploy)."
+            exit 0
+          }
+          New-Item -ItemType Directory -Path $destPath -Force | Out-Null
+          $files = Get-ChildItem -Path $sourcePath -Filter "*.ps1" -File
+          if ($files.Count -eq 0) {
+            Write-Host "No .ps1 files found in $sourcePath"
+            exit 0
+          }
+          Copy-Item -Path (Join-Path $sourcePath "*.ps1") -Destination $destPath -Force
+          Write-Host "Copied $($files.Count) .ps1 file(s) to $destPath : $($files.Name -join ', ')"
+
       - name: Upload Deployment Artifacts
         if: always()
         uses: actions/upload-artifact@v4
