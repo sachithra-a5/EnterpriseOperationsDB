@@ -9,7 +9,7 @@ CREATE TABLE [config].[Status] (
     [CreatedDate]  DATETIME2(7)     NOT NULL CONSTRAINT [DF_config_Status_CreatedDate] DEFAULT (GETDATE()),
     [ModifiedDate] DATETIME2(7)     NOT NULL CONSTRAINT [DF_config_Status_ModifiedDate] DEFAULT (GETDATE()),
     [IsActive]     BIT              NOT NULL CONSTRAINT [DF_config_Status_IsActive] DEFAULT (1),
-    [StatusColor] NVARCHAR(20) NULL, 
+    [StatusColor] NVARCHAR(30) NULL, 
     CONSTRAINT [PK_config_Status] PRIMARY KEY CLUSTERED ([StatusId] ASC),
     CONSTRAINT [UQ_config_Status_StatusCode] UNIQUE ([StatusCode])
 );

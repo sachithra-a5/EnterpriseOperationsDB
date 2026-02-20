@@ -82,13 +82,21 @@ jobs:
 
           if (Test-Path "${{ steps.discover.outputs.report_path }}") {
             [xml]$xml = Get-Content "${{ steps.discover.outputs.report_path }}" -Encoding UTF8
-            $ops = $xml.DeploymentReport.Operations.Operation
+            $ns = New-Object System.Xml.XmlNamespaceManager($xml.NameTable)
+            $ns.AddNamespace("d", "http://schemas.microsoft.com/sqlserver/dac/DeployReport/2012/02")
+            $ops = $xml.SelectNodes("//d:Operation", $ns)
             Add-SummaryLine "### Deployment Summary: ${{ env.ENV_VALUE }}"
-            if ($ops) {
+            if ($ops -and $ops.Count -gt 0) {
               Add-SummaryLine "| Operation | Object Type | Target Name |"
               Add-SummaryLine "| :--- | :--- | :--- |"
               foreach ($op in $ops) {
-                Add-SummaryLine "| $($op.Name) | $($op.Item.Type) | $($op.Item.Name) |"
+                $opName = $op.GetAttribute("Name")
+                $items = $op.SelectNodes("d:Item", $ns)
+                foreach ($item in $items) {
+                  $type = $item.GetAttribute("Type")
+                  $value = $item.GetAttribute("Value")
+                  Add-SummaryLine "| $opName | $type | $value |"
+                }
               }
             } else {
               Add-SummaryLine "[OK] No schema changes detected. Database is already up to date."
