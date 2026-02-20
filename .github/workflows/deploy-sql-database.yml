@@ -11,7 +11,7 @@ on:
 jobs:
   # JOB 1: Build the project and generate the SQL Preview Script
   build_preview:
-    name: Build & Generate Script
+    name: Build & Generate Script for ${{ vars.ENV_NAME }}  
     runs-on: [self-hosted, windows]
     environment: ${{ vars.ENV_NAME }}
     defaults:
