@@ -61,6 +61,40 @@ SqlPackage.exe /Action:Publish `
 
 Override connection or variables as needed; the profile supplies `Environment` and `DatabaseName` for post-deploy scripts.
 
+## GitHub Actions CI/CD
+
+The repository includes a two-job pipeline for building, generating a deployment preview, and deploying to SQL Server after manual approval.
+
+- **Workflow file:** [.github/workflows/deploy-sql-database.yml](.github/workflows/deploy-sql-database.yml)
+- **Runner:** Self-hosted Windows (e.g. `runs-on: [self-hosted, windows]`).
+- **Triggers:** Push to `master` and manual `workflow_dispatch`.
+
+### Pipeline jobs
+
+| Job | Purpose |
+|-----|---------|
+| **Build & Generate Script** | Checkout → MSBuild (Release) → SqlPackage **Script** (writes `deployment_preview.sql`) → SqlPackage **DeployReport** (writes `deployment_report.xml`) → upload artifact `sql-deployment-package` (preview script, report, `.dacpac`, `Scripts/PowerShell/`). |
+| **SQL Deployment** | Runs after Job 1. Downloads artifact → SqlPackage **Publish** → add deployment summary to job summary → copy PowerShell scripts to `SCRIPTS_DESTINATION_PATH` → cleanup. |
+
+Both jobs use the same environment by default (`ENV_NAME`). To require approval **only for deployment**: use two environments—e.g. **ENV_NAME** (e.g. `Dev`) for Job 1 with no required reviewers, and **DEPLOY_ENVIRONMENT** (e.g. `Dev-Deploy`) for Job 2 with required reviewers—and set the deploy job in the workflow to `environment: ${{ vars.DEPLOY_ENVIRONMENT }}`.
+
+### Variables and secrets
+
+Configure in **Settings → Secrets and variables → Actions** (repository and/or environment).
+
+| Type | Name | Purpose |
+|------|------|---------|
+| **Variable** | `ENV_NAME` | Environment name (e.g. `Dev`). Used by both jobs for variables and display. |
+| **Variable** | `DEPLOY_ENVIRONMENT` | Optional. If set, use it for Job 2 only so required reviewers apply to deploy (e.g. `Dev-Deploy`). |
+| **Variable** | `DB_SERVER_NAME` | Target SQL Server instance (e.g. `localhost`, `.\SQLEXPRESS`). Set in the environment(s). |
+| **Variable** | `DB_NAME` | Target database name (e.g. `EnterpriseOperationsDB_Dev`). Set in the environment(s). |
+| **Variable** | `SCRIPTS_DESTINATION_PATH` | Folder path on the runner where `.ps1` files from `Scripts/PowerShell/` are copied (Job 2). |
+| **Secret** | `DB_CONNECTION_STRING` | Rest of the connection string (e.g. `Integrated Security=True;` or `User Id=...;Password=...;`). Combined with `Server=` and `Database=` in the workflow. Set in the environment(s). |
+
+### Artifacts
+
+- After Job 1, the run has an artifact **sql-deployment-package** containing `deployment_preview.sql`, `deployment_report.xml`, the built `.dacpac`, and `Scripts/PowerShell/`. Download it to review the script before approving deployment.
+
 ## Publish profiles
 
 | Profile   | Typical use   | SQLCMD `Environment` | Example database name           |
@@ -71,6 +105,14 @@ Override connection or variables as needed; the profile supplies `Environment` a
 
 - Edit each `.publish.xml` under **PublishProfiles** to set the real server and database (and auth) for your environments.
 - To avoid accidental production deploys, use Dev (or UAT) as the default and only run Publish with the Prod profile when intended.
+
+### Example publish profile for local deployments (versioned)
+
+A versioned example profile is kept in the repo for reference and local setups:
+
+- **File:** [PublishProfiles/Local.Example.publish.xml](PublishProfiles/Local.Example.publish.xml)
+- **Purpose:** Template for local or dev deployments. Copy to a new profile (e.g. `Dev.publish.xml`) or use as reference. The file header includes a version comment (e.g. `Version: 1.0`) for change tracking.
+- **What to set:** Update `TargetConnectionString` and `TargetServerName` to your instance: `(localdb)\MSSQLLocalDB`, `.\SQLEXPRESS`, or `localhost`. Keep `SqlCmdVariable` **Environment** (Dev/UAT/Prod) and **DatabaseName** in sync with your target and static data.
 
 ## Static data and environments
 

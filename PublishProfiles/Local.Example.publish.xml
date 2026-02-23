@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Example publish profile for local deployments (versioned reference).
+  Copy this file (e.g. to Dev.publish.xml) or use as reference.
+  Version: 1.0
+  Replace placeholders with your actual values before use.
+-->
+<Project ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <PropertyGroup>
+    <TargetConnectionString>Data Source=&lt;YOUR_SERVER&gt;;Initial Catalog=&lt;YOUR_DATABASE&gt;;Integrated Security=True;Persist Security Info=False;Pooling=False;MultipleActiveResultSets=False;Connect Timeout=60;Encrypt=True;TrustServerCertificate=True;</TargetConnectionString>
+    <TargetDatabaseName>&lt;YOUR_DATABASE&gt;</TargetDatabaseName>
+    <DeployScriptFileName>&lt;YOUR_DATABASE&gt;.sql</DeployScriptFileName>
+    <TargetServerName>&lt;YOUR_SERVER&gt;</TargetServerName>
+  </PropertyGroup>
+  <ItemGroup>
+    <SqlCmdVariable Include="Environment">
+      <Value>&lt;Dev|UAT|Prod&gt;</Value>
+    </SqlCmdVariable>
+    <SqlCmdVariable Include="DatabaseName">
+      <Value>&lt;YOUR_DATABASE&gt;</Value>
+    </SqlCmdVariable>
+  </ItemGroup>
+</Project>

@@ -120,5 +120,6 @@
     <None Include="PublishProfiles\Dev.publish.xml" />
     <None Include="PublishProfiles\UAT.publish.xml" />
     <None Include="PublishProfiles\Prod.publish.xml" />
+    <None Include="PublishProfiles\Local.Example.publish.xml" />
   </ItemGroup>
 </Project>

@@ -181,6 +181,8 @@ publish/
 
 # Publish Web Output
 *.[Pp]ublish.xml
+# Exception: versioned example publish profile for local deployments only
+!PublishProfiles/Local.Example.publish.xml
 *.azurePubxml
 # Note: Comment the next line if you want to checkin your web deploy settings,
 # but database connection strings (with potential passwords) will be unencrypted
